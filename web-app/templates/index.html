@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hard Hat Compliance for PPE Detection System</title>
+    <style>
+        /* Set background image and styling */
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('static/images/pexels-photo-2138126.jpeg');
+            background-size: cover;
+            background-position: center; 
+            background-attachment: fixed; 
+            font-family: Arial, sans-serif; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        /* Style the header */
+        h1 {
+            font-size: 36px;
+            text-align: center;
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Style the video feed */
+        img {
+            width: 640px;
+            height: 480px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            margin-bottom: 20px;
+        }
+
+        /* Style the detected labels */
+        #logs {
+            font-size: 18px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            width: 80%;
+            max-width: 600px;
+            margin-top: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Style buttons */
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #viewLogsButton {
+            background-color: blue;
+            color: white;
+        }
+
+        #downloadLogsButton {
+            background-color: green;
+            color: white;
+        }
+
+        #closeLogsButton {
+            background-color: gray;
+            color: white;
+        }
+
+        /* Style the modal for non-compliance alert */
+        #alertModal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #modalContent {
+            background-color: white;
+            color: black;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #stopAlertButton {
+            padding: 10px 20px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Style the logs modal */
+        #logsModal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #logsModal #modalContent {
+            background-color: white;
+            color: black;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #savedLogsList {
+            list-style-type: none;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hard Hat Compliance for PPE Detection System</h1>
+    <img src="{{ url_for('video_feed') }}" alt="Video Feed">
+
+    <div id="logs"></div>
+    <button id="viewLogsButton">View Saved Logs</button>
+    <button id="downloadLogsButton">Download Logs as Excel</button>
+
+    <!-- Alert Modal -->
+    <div id="alertModal">
+        <div id="modalContent">
+            <h2>Non-compliance Detected</h2>
+            <button id="stopAlertButton">Stop</button>
+        </div>
+    </div>
+
+    <!-- Logs Modal -->
+    <div id="logsModal">
+        <div id="modalContent">
+            <h2>Saved Logs</h2>
+            <ul id="savedLogsList"></ul>
+            <button id="closeLogsButton">Close</button>
+        </div>
+    </div>
+
+    <!-- Alert Sound -->
+    <audio id="alertSound" src="static/audios/Danger Alarm Sound Effect.mp3" loop></audio>
+
+    <script>
+        let isAlertActive = false; // To prevent multiple alerts
+        const alertSound = document.getElementById('alertSound');
+        const alertModal = document.getElementById('alertModal');
+        const stopAlertButton = document.getElementById('stopAlertButton');
+        const viewLogsButton = document.getElementById('viewLogsButton');
+        const downloadLogsButton = document.getElementById('downloadLogsButton');
+
+        // Function to fetch logs and update the detected objects in real-time
+        function fetchLogs() {
+            fetch('/logs')
+                .then(response => response.json())
+                .then(data => {
+                    // Update the logs with the new detections
+                    const logsContainer = document.getElementById('logs');
+                    logsContainer.innerHTML = data.join(', ');
+
+                    // Check if "no" is in the logs and trigger the alert
+                    if (data.some(log => log.toLowerCase().includes("no")) && !isAlertActive) {
+                        isAlertActive = true;
+                        alertSound.play();
+                        alertModal.style.display = "flex"; // Show the modal
+                    }
+                })
+                .catch(error => console.error('Error fetching logs:', error));
+        }
+
+        // Stop the alert when the stop button is clicked
+        stopAlertButton.addEventListener('click', () => {
+            isAlertActive = false;
+            alertSound.pause();
+            alertSound.currentTime = 0; // Reset sound
+            alertModal.style.display = "none"; // Hide the modal
+        });
+
+        // Fetch logs every 500 milliseconds to update in real-time
+        setInterval(fetchLogs, 500);
+
+        // Periodically check for saved logs button visibility
+        setInterval(() => {
+            viewLogsButton.style.display = 'block';
+            downloadLogsButton.style.display = 'block';
+        }, 5000);
+
+        let savedLogs = []; // Array to store logs
+
+        // Function to fetch logs and save them every 5 seconds
+        function fetchAndSaveLogs() {
+            fetch('/logs')
+                .then(response => response.json())
+                .then(data => {
+                    const timestamp = new Date().toLocaleString();
+                    const logEntry = { timestamp, logs: data.join(', ') };
+                    savedLogs.push(logEntry); // Save log entry
+                })
+                .catch(error => console.error('Error fetching logs:', error));
+        }
+
+        // Fetch and save logs every 5 seconds
+        setInterval(fetchAndSaveLogs, 5000);
+
+        // View Saved Logs
+        const logsModal = document.getElementById('logsModal');
+        const savedLogsList = document.getElementById('savedLogsList');
+        const closeLogsButton = document.getElementById('closeLogsButton');
+
+        viewLogsButton.addEventListener('click', () => {
+            savedLogsList.innerHTML = ''; // Clear previous logs
+            savedLogs.forEach(log => {
+                const logItem = document.createElement('li');
+                logItem.textContent = `${log.timestamp}: ${log.logs}`;
+                savedLogsList.appendChild(logItem);
+            });
+            logsModal.style.display = 'block'; // Show modal
+        });
+
+        closeLogsButton.addEventListener('click', () => {
+            logsModal.style.display = 'none'; // Hide modal
+        });
+
+        // Download Logs as Excel File
+        downloadLogsButton.addEventListener('click', () => {
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(savedLogs);
+            XLSX.utils.book_append_sheet(wb, ws, "Logs");
+            XLSX.writeFile(wb, 'logs.xlsx');
+        });
+    </script>
+
+    <!-- Include SheetJS library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body>
+</html>
